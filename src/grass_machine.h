@@ -24,6 +24,12 @@ struct grass_machine
 
 /* 初期状態のGrass抽象機械を作成する。 */
 struct grass_machine *
-create_grass_machine(struct grass_instruction_node *code);
+grass_create_machine(struct grass_instruction_node *code);
+
+int
+grass_step_machine(struct grass_machine *machine, char **error_message);
+
+int
+grass_machine_done(const struct grass_machine *machine);
 
 #endif /* grass_machine_H_ */

@@ -1,6 +1,11 @@
 /* $Id$ */
 /*! \file
  * \brief コード関連の定義。
+ *
+ * \date 2009-01-06
+ * \author yoh2
+ * $LastChangedBy$
+ * $LastChangedDate$
  */
 #include "grass_instruction.h"
 #include <gc.h>
@@ -61,3 +66,22 @@ grass_create_abstraction_node(size_t num_args, struct grass_instruction_node *co
 
 	return new_node;
 }
+
+
+struct grass_instruction_node *
+grass_append_instruction_list(struct grass_instruction_node *list1, struct grass_instruction_node *list2)
+{
+	if(list1 == NULL)
+	{
+		return list2;
+	}
+	else
+	{
+		struct grass_instruction_node *list1_tail;
+		for(list1_tail = list1; list1_tail->next != NULL; list1_tail = list1_tail->next)
+			;
+		list1_tail->next = list2;
+		return list1;
+	}
+}
+

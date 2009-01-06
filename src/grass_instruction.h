@@ -1,6 +1,11 @@
 /* $Id$ */
 /*! \file
  * \brief コード関連の定義。
+ *
+ * \date 2009-01-06
+ * \author yoh2
+ * $LastChangedBy$
+ * $LastChangedDate$
  */
 #ifndef grass_instruction_H_
 #define grass_instruction_H_
@@ -54,5 +59,8 @@ grass_create_application_node(size_t func_index, size_t arg_index);
 /*! \brief 関数定義のノードを作成する。 */
 struct grass_instruction_node *
 grass_create_abstraction_node(size_t num_args, struct grass_instruction_node *code);
+
+struct grass_instruction_node *
+grass_append_instruction_list(struct grass_instruction_node *list1, struct grass_instruction_node *list2);
 
 #endif /* grass_instruction_H_ */
