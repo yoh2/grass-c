@@ -1,6 +1,6 @@
 /* $Id$ */
 /*! \file
- * \brief $B8e$G=q$/!#(B
+ * \brief 後で書く。
  */
 
 #ifndef grass_H_
