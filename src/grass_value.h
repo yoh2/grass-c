@@ -84,6 +84,9 @@ struct grass_value_node *
 grass_create_false_node(void);
 
 struct grass_value_node *
+grass_clone_value_node(const struct grass_value_node *node);
+
+struct grass_value_node *
 grass_get_nth_value_node(struct grass_value_node *node, size_t n);
 
 struct grass_value_node *

@@ -139,11 +139,14 @@ int main(int argc, char *argv[])
 	else
 	{
 		struct grass_machine *machine;
+		char *msg;
 
-		wprintf(L"code = %p\n", code);
 		machine = grass_create_machine(code);
 
+		/*
+		wprintf(L"code = %p\n", code);
 		wprintf(L"machine = %p\n\n", machine);
+		*/
 
 		while(!grass_machine_done(machine))
 		{
@@ -152,7 +155,11 @@ int main(int argc, char *argv[])
 			wprintf(L"hit enter key.");
 			getwchar();
 			*/
-			grass_step_machine(machine, NULL);
+			if(!grass_step_machine(machine, &msg))
+			{
+				wprintf(L"%s\n", msg);
+				break;
+			}
 		}
 	}
 	return 0;

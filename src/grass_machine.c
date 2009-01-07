@@ -184,22 +184,10 @@ grass_step_machine(struct grass_machine *machine, char **error_message)
 		{
 		case GRASS_VT_CLOSURE:
 			{
-				struct grass_value_node *arg_env;
 				struct grass_value_node *env_node;
 				struct grass_value_node *dump_node;
 
-				if(arg_node->value.type == GRASS_VT_CLOSURE)
-				{
-					arg_env = arg_node->value.content.closure.env;
-				}
-				else
-				{
-					arg_env = NULL;
-				}
-
-				env_node = grass_create_closure_node(
-				                 arg_node->value.content.closure.code,
-				                 arg_node->value.content.closure.env);
+				env_node = grass_clone_value_node(arg_node);
 				if(env_node == NULL)
 				{
 					*error_message = strerror(errno);
@@ -230,6 +218,9 @@ grass_step_machine(struct grass_machine *machine, char **error_message)
 
 				if(arg_node->value.type != GRASS_VT_NUMERIC)
 				{
+					void dump_machine(const struct grass_machine *machine);
+					wprintf(L"arg_node->value.type = %d\n", arg_node->value.type);
+					dump_machine(machine);
 					*error_message = "runtime error: non-numeric value could not applyed to Out.";
 					return 0;
 				}
@@ -281,7 +272,7 @@ grass_step_machine(struct grass_machine *machine, char **error_message)
 
 				if(arg_node->value.type != GRASS_VT_NUMERIC)
 				{
-					*error_message = "runtime error: non-numeric value could not applyed to Out.";
+					*error_message = "runtime error: non-numeric value could not applyed to Succ.";
 					return 0;
 				}
 
@@ -325,8 +316,7 @@ grass_step_machine(struct grass_machine *machine, char **error_message)
 				}
 
 				machine->code = machine->code->next;
-				bool_value->next = machine->env;
-				machine->env = bool_value;
+				machine->env = grass_append_value_list(bool_value, machine->env);
 			}
 			break;
 		}
@@ -364,7 +354,7 @@ grass_step_machine(struct grass_machine *machine, char **error_message)
 		machine->code = code_top->next;
 
 		abs_node = grass_create_abstraction_node(
-		                 code_top->inst.content.abs.num_args,
+		                 code_top->inst.content.abs.num_args - 1,
 		                 code_top->inst.content.abs.code);
 		if(abs_node == NULL)
 		{

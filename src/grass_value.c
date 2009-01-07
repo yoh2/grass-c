@@ -101,26 +101,25 @@ grass_create_numeric_node(int n)
 	return new_node;
 }
 
-
 struct grass_value_node *
 grass_create_true_node(void)
 {
-	struct grass_instruction_node *true_code;
 	struct grass_instruction_node *abs_code;
+	struct grass_instruction_node *true_code;
 
-	abs_code = grass_create_application_node(2, 3);
+	struct grass_value_node *identical_env_node;
+
+	identical_env_node = grass_create_closure_node(NULL, NULL);
+
+	abs_code = grass_create_application_node(3, 2);
 	if(abs_code == NULL)
 	{
 		return NULL;
 	}
 
 	true_code = grass_create_abstraction_node(1, abs_code);
-	if(true_code == NULL)
-	{
-		return NULL;
-	}
 
-	return grass_create_closure_node(true_code, NULL);
+	return grass_create_closure_node(true_code, identical_env_node);
 }
 
 struct grass_value_node *
@@ -135,6 +134,22 @@ grass_create_false_node(void)
 	}
 
 	return grass_create_closure_node(false_code, NULL);
+}
+
+struct grass_value_node *
+grass_clone_value_node(const struct grass_value_node *node)
+{
+	struct grass_value_node *new_node
+		= (struct grass_value_node *)GC_MALLOC(sizeof(new_node[0]));
+	if(new_node == NULL)
+	{
+		return NULL;
+	}
+
+	new_node->value = node->value;
+	new_node->next = NULL;
+
+	return new_node;
 }
 
 struct grass_value_node *
