@@ -9,11 +9,9 @@
  */
 #ifndef grass_instruction_H_
 #define grass_instruction_H_
-/* コード関連の型 */
 
 #include <stddef.h>
-
-struct grass_instruction_node;
+#include "grass_fwd.h"
 
 struct grass_application
 {

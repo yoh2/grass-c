@@ -10,7 +10,7 @@
 #ifndef grass_parser_H_
 #define grass_parser_H_
 
-#include "grass_instruction.h"
+#include "grass_fwd.h"
 #include <stdio.h>
 
 struct grass_instruction_node *

@@ -10,6 +10,7 @@
 
 #include "grass_machine.h"
 #include "grass_value.h"
+#include "grass_instruction.h"
 #include <gc.h>
 #include <wchar.h>
 #include <errno.h>
@@ -179,147 +180,7 @@ grass_step_machine(struct grass_machine *machine, char **error_message)
 			*error_message = "runtime error: stack out of range.";
 			return 0;
 		}
-
-		switch(func_node->value.type)
-		{
-		case GRASS_VT_CLOSURE:
-			{
-				struct grass_value_node *env_node;
-				struct grass_value_node *dump_node;
-
-				env_node = grass_clone_value_node(arg_node);
-				if(env_node == NULL)
-				{
-					*error_message = strerror(errno);
-					return 0;
-				}
-
-				dump_node = grass_create_closure_node(
-				                  machine->code->next,
-				                  machine->env);
-				if(dump_node == NULL)
-				{
-					*error_message = strerror(errno);
-					return 0;
-				}
-
-				machine->code = func_node->value.content.closure.code;
-				env_node->next = func_node->value.content.closure.env;
-				machine->env = env_node;
-				dump_node->next = machine->dump;
-				machine->dump = dump_node;
-			}
-			break;
-
-		case GRASS_VT_OUT:
-			{
-				struct grass_value_node *env_node;
-				int n;
-
-				if(arg_node->value.type != GRASS_VT_NUMERIC)
-				{
-					void dump_machine(const struct grass_machine *machine);
-					wprintf(L"arg_node->value.type = %d\n", arg_node->value.type);
-					dump_machine(machine);
-					*error_message = "runtime error: non-numeric value could not applyed to Out.";
-					return 0;
-				}
-				n = arg_node->value.content.numeric.n;
-
-				/* TODO: 真っ当な int(char) → wchar_t 変換をかませる */
-				putwchar(n);
-
-				env_node = grass_create_numeric_node(n);
-				if(env_node == NULL)
-				{
-					*error_message = strerror(errno);
-					return 0;
-				}
-				machine->code = machine->code->next;
-				env_node->next = machine->env;
-				machine->env = env_node;
-			}
-			break;
-
-		case GRASS_VT_IN:
-			{
-				struct grass_value_node *env_node;
-				wint_t ch;
-
-				ch = getwchar();
-				if(ch == WEOF)
-				{
-					*error_message = "runtime error: unexpected EOF.";
-					return 0;
-				}
-				/* TODO: 真っ当な wint_t(wchar_t) → int 変換をかませる */
-				env_node = grass_create_numeric_node((int)ch);
-
-				if(env_node == NULL)
-				{
-					*error_message = strerror(errno);
-					return 0;
-				}
-				machine->code = machine->code->next;
-				env_node->next = machine->env;
-				machine->env = env_node;
-			}
-			break;
-
-		case GRASS_VT_SUCC:
-			{
-				struct grass_value_node *env_node;
-
-				if(arg_node->value.type != GRASS_VT_NUMERIC)
-				{
-					*error_message = "runtime error: non-numeric value could not applyed to Succ.";
-					return 0;
-				}
-
-				env_node = grass_create_numeric_node((arg_node->value.content.numeric.n + 1) & 0xff);
-
-				if(env_node == NULL)
-				{
-					*error_message = strerror(errno);
-					return 0;
-				}
-				machine->code = machine->code->next;
-				env_node->next = machine->env;
-				machine->env = env_node;
-			}
-			break;
-
-		case GRASS_VT_NUMERIC:
-			{
-				struct grass_value_node *bool_value;
-
-				if(arg_node->value.type != GRASS_VT_NUMERIC)
-				{
-					*error_message = "runtime error: non-numeric value could not applyed to numeric value.";
-					return 0;
-				}
-				//assert(!"TODO: implementation");
-
-				if(func_node->value.content.numeric.n == arg_node->value.content.numeric.n)
-				{
-					bool_value = grass_create_true_node();
-				}
-				else
-				{
-					bool_value = grass_create_false_node();
-				}
-
-				if(bool_value == NULL)
-				{
-					*error_message = strerror(errno);
-					return 0;
-				}
-
-				machine->code = machine->code->next;
-				machine->env = grass_append_value_list(bool_value, machine->env);
-			}
-			break;
-		}
+		return grass_apply(machine, &func_node->value, &arg_node->value, error_message);
 	}
 	else if(machine->code->inst.content.abs.num_args == 1)
 	{

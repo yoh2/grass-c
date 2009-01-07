@@ -11,8 +11,7 @@
 #ifndef grass_machine_H_
 #define grass_machine_H_
 
-#include "grass_instruction.h"
-#include "grass_value.h"
+#include "grass_fwd.h"
 
 struct grass_machine
 {
