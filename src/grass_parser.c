@@ -45,25 +45,129 @@ struct grass_token
 /*! ソース読み込みコンテキスト */
 struct grass_read_context
 {
-	/*! ungot_token.type != L'\0' ならば押し戻されたトークンが入っている。 */
-	struct grass_token ungot_token;
+	mbstate_t state;
+
+	wint_t ungot_ch;    /*!< ungetされた文字。空ならば WEOF 。 */
+
+	size_t read_bytes;   /*!< 読み込んだバイト数 */
+	size_t read_wchars;  /*!< 読み込んだ文字数 (ワイド文字換算) */
+	size_t read_lines;   /*!< 読み込んだ行数 (というより L'\n' の数) */
+
+	int error;
 };
 
-/*! ソース読み込みコンテキストの初期化子。 */
-#define GRASS_READ_CONTEXT_INITIALIZER  { { 0 } }
+
+static void
+grass_init_read_context(struct grass_read_context *context)
+{
+	assert(context != NULL);
+
+	memset(&context->state, 0, sizeof(context->state));
+	context->ungot_ch = WEOF;
+	context->read_bytes = 0;
+	context->read_wchars = 0;
+	context->read_lines = 0;
+	context->error = 0;
+}
+
+
+/*!
+ * ソースを一文字読み込む。
+ *
+ * 入力ストリームはバイト単位で読み込むが、読み込み結果はワイド文字となる。
+ * マルチバイト文字はワイド文字列1文字分 (つまり複数バイト) 読み進められる。
+ *
+ * \param in      読み込み元。
+ * \param context 読み込みコンテキスト。
+ *
+ * \retval WEOF     ファイル終端またはエラー。
+ *                  エラー時は context->error に、エラー発生時の errno の
+ *                  値が入る。ファイル終端の時は context->errno の変更は
+ *                  行なわれない。
+ * \retval non-WEOF 読み込まれた文字。
+ */
+static wint_t
+grass_getwc(FILE *in, struct grass_read_context *context)
+{
+	assert(in != NULL);
+	assert(context != NULL);
+
+	if(context->ungot_ch != WEOF)
+	{
+		wint_t wch = context->ungot_ch;
+		context->ungot_ch = WEOF;
+		return wch;
+	}
+	for(;;)
+	{
+		int ch_int = getc(in);
+		char ch = (char)ch_int;
+		wchar_t wch;
+
+		if(ch == EOF)
+		{
+			if(ferror(in))
+			{
+				context->error = errno;
+			}
+			return WEOF;
+		}
+
+		context->read_bytes++;
+
+		switch(mbrtowc(&wch, &ch, 1, &context->state))
+		{
+		case 1:
+			if(wch == L'\n')
+			{
+				context->read_lines++;
+			}
+			context->read_wchars++;
+			return wch;
+
+		case (size_t)-2:
+			continue;
+
+		case (size_t)-1:
+			context->error = errno;
+			return WEOF;
+
+		default:
+			assert(0); /* BUG! */
+			return WEOF;
+		}
+	}
+	assert(0); /* BUG! */
+	return WEOF;
+}
+
+
+static void
+grass_ungetwc(wint_t ch, struct grass_read_context *context)
+{
+	assert(context != NULL);
+	assert(context->ungot_ch == WEOF);
+	assert(ch != WEOF);
+
+	context->ungot_ch = ch;
+}
 
 
 /*! ソースを一文字読み込む。
  * W, w, v (含全角) 以外は読み飛ばし、全角は半角に変換されたものが返される。
  *
- * \param in 読み込み元。
+ * \param in      読み込み元。
+ * \param context 読み込みコンテキスト。
  *
  * \retval WEOF     ファイル終端またはエラー。
  * \retval non-WEOF 読み込んだ文字。 L'W', L'w', L'v' のいずれかになる。
  */
 static wchar_t
-grass_getwc(FILE *in)
+grass_get_sourcewc(FILE *in, struct grass_read_context *context)
 {
+	assert(in != NULL);
+	assert(context != NULL);
+
 	/* 標準入力から読み込む場合、何度も^Dが必要にならないように。 */
 	if(ferror(in) || feof(in))
 	{
@@ -72,7 +176,7 @@ grass_getwc(FILE *in)
 
 	for(;;)
 	{
-		wint_t ch = getwc(in);
+		wint_t ch = grass_getwc(in, context);
 
 		switch(ch)
 		{
@@ -121,27 +225,7 @@ grass_read_token(FILE *in, struct grass_read_context *context, struct grass_toke
 	assert(context != NULL);
 	assert(token != NULL);
 
-	if(context->ungot_token.type != L'\0')
-	{
-		*token = context->ungot_token;
-		context->ungot_token.type = L'\0';
-
-		switch(token->type)
-		{
-		case L'v':
-			break;
-
-		case WEOF:
-			break;
-
-		default:
-			break;
-		}
-
-		return 1;
-	}
-
-	token->type = grass_getwc(in);
+	token->type = grass_get_sourcewc(in, context);
 	switch(token->type)
 	{
 	case L'W':
@@ -161,12 +245,12 @@ grass_read_token(FILE *in, struct grass_read_context *context, struct grass_toke
 	/* W or w */
 	for(;;)
 	{
-		wint_t ch = grass_getwc(in);
+		wint_t ch = grass_get_sourcewc(in, context);
 		if(ch != token->type)
 		{
 			if(ch != WEOF)
 			{
-				ungetwc(ch, in);
+				grass_ungetwc(ch, context);
 			}
 			break;
 		}
@@ -175,19 +259,6 @@ grass_read_token(FILE *in, struct grass_read_context *context, struct grass_toke
 	}
 
 	return !ferror(in);
-}
-
-
-void
-grass_unget_token(struct grass_read_context *context, const struct grass_token *token)
-{
-	assert(context != NULL);
-	assert(token != NULL);
-
-	/* 既に何か押し戻されていてはならない。 */
-	assert(context->ungot_token.type == L'\0');
-
-	context->ungot_token = *token;
 }
 
 
@@ -200,14 +271,14 @@ grass_unget_token(struct grass_read_context *context, const struct grass_token *
  * \retval non-zero エラー。
  */
 static int
-grass_skip_until_first_w(FILE *in)
+grass_skip_until_first_w(FILE *in, struct grass_read_context *context)
 {
 	for(;;)
 	{
-		switch(grass_getwc(in))
+		switch(grass_get_sourcewc(in, context))
 		{
 		case L'w':
-			ungetwc(L'w', in);
+			grass_ungetwc(L'w', context);
 			return 1;
 
 		case WEOF:
@@ -335,9 +406,11 @@ grass_parse_abstraction(FILE *in, struct grass_read_context *context,
 struct grass_instruction_node *
 grass_parse_source(FILE *in, char **error_message)
 {
-	struct grass_read_context context = GRASS_READ_CONTEXT_INITIALIZER;
+	struct grass_read_context context;
 	struct grass_instruction_node *code = NULL;
 	char *dummy_error_message;
+
+	grass_init_read_context(&context);
 
 	assert(in != NULL);
 
@@ -347,7 +420,7 @@ grass_parse_source(FILE *in, char **error_message)
 	}
 	*error_message = NULL;
 
-	if(!grass_skip_until_first_w(in))
+	if(!grass_skip_until_first_w(in, &context))
 	{
 		*error_message = strerror(errno);
 		return NULL;

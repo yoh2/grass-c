@@ -12,7 +12,6 @@
 #include "grass_value.h"
 #include "grass_instruction.h"
 #include <gc.h>
-#include <wchar.h>
 #include <errno.h>
 #include <string.h>
 #include <assert.h>

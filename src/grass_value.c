@@ -11,8 +11,8 @@
 #include "grass_value.h"
 #include "grass_instruction.h"
 #include "grass_machine.h"
+#include <stdio.h>
 #include <string.h>
-#include <wchar.h>	/* 後で消える予定 */
 #include <errno.h>
 #include <gc.h>
 #include <assert.h>
@@ -297,9 +297,7 @@ grass_apply_to_out(struct grass_machine *machine,
 	}
 	n = arg->content.numeric.n;
 
-	/* TODO: 真っ当な int(char) → wchar_t 変換をかませる */
-	/* TODO: ↑ wchar_t 利用は廃止の方向で。 */
-	putwchar(n);
+	putchar(n);
 
 	env_node = grass_create_numeric_node(n);
 	if(env_node == NULL)
@@ -322,7 +320,7 @@ grass_apply_to_in(struct grass_machine *machine,
                   char **error_message)
 {
 	struct grass_value_node *env_node;
-	wint_t ch;
+	int ch;
 
 	assert(machine != NULL);
 	assert(func != NULL);
@@ -331,14 +329,13 @@ grass_apply_to_in(struct grass_machine *machine,
 
 	assert(func->type == GRASS_VT_IN);
 
-	ch = getwchar();
-	if(ch == WEOF)
+	ch = getchar();
+	if(ch == EOF)
 	{
 		*error_message = "runtime error: unexpected EOF.";
 		return 0;
 	}
-	/* TODO: 真っ当な wint_t(wchar_t) → int 変換をかませる */
-	env_node = grass_create_numeric_node((int)ch);
+	env_node = grass_create_numeric_node(ch);
 
 	if(env_node == NULL)
 	{

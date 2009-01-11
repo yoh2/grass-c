@@ -1,6 +1,6 @@
 /* $Id$ */
 /*! \file
- * \brief $B%U%!%$%k$rFI$_9~$s$G(B grass_instruction_node * $B$K$h$k%j%9%H$r:n$k!#(B
+ * \brief ファイルを読み込んで grass_instruction_node * によるリストを作る。
  *
  * \date 2009-01-06
  * \author yoh2
