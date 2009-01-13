@@ -465,3 +465,52 @@ grass_apply(struct grass_machine *machine,
 		return 0;
 	}
 }
+
+
+
+
+
+static void
+grass_dump_value(const struct grass_value *value)
+{
+	switch(value->type)
+	{
+	case GRASS_VT_CLOSURE:
+		printf("[");
+		grass_dump_instruction_list(value->content.closure.code);
+		printf(", ");
+		grass_dump_value_list(value->content.closure.env);
+		printf("]");
+		break;
+
+	case GRASS_VT_OUT:
+		printf("Out");
+		break;
+
+	case GRASS_VT_IN:
+		printf("In");
+		break;
+
+	case GRASS_VT_SUCC:
+		printf("Succ");
+		break;
+
+	case GRASS_VT_NUMERIC:
+		printf("Numeric{%d}", value->content.numeric.n);
+		break;
+	}
+}
+
+
+void
+grass_dump_value_list(const struct grass_value_node *value_list)
+{
+	printf("(");
+	while(value_list != NULL)
+	{
+		grass_dump_value(&value_list->value);
+		printf(" :: ");
+		value_list = value_list->next;
+	}
+	printf("ε)");
+}

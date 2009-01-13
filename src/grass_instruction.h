@@ -61,4 +61,7 @@ grass_create_abstraction_node(size_t num_args, struct grass_instruction_node *co
 struct grass_instruction_node *
 grass_append_instruction_list(struct grass_instruction_node *list1, struct grass_instruction_node *list2);
 
+void
+grass_dump_instruction_list(const struct grass_instruction_node *inst_list);
+
 #endif /* grass_instruction_H_ */

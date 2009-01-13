@@ -31,4 +31,6 @@ grass_step_machine(struct grass_machine *machine, char **error_message);
 int
 grass_machine_done(const struct grass_machine *machine);
 
+void
+grass_dump_machine(const struct grass_machine *machine);
 #endif /* grass_machine_H_ */

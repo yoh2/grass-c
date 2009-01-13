@@ -11,6 +11,7 @@
 #include "grass_machine.h"
 #include "grass_value.h"
 #include "grass_instruction.h"
+#include <stdio.h>
 #include <gc.h>
 #include <errno.h>
 #include <string.h>
@@ -243,4 +244,23 @@ grass_machine_done(const struct grass_machine *machine)
 	assert(machine != NULL);
 
 	return (machine->code == NULL) && (machine->dump == NULL);
+}
+
+
+void
+grass_dump_machine(const struct grass_machine *machine)
+{
+	printf("code: ");
+	grass_dump_instruction_list(machine->code);
+	puts("");
+
+	printf("env : ");
+	grass_dump_value_list(machine->env);
+	puts("");
+
+	printf("dump: ");
+	grass_dump_value_list(machine->dump);
+	puts("");
+
+	puts("");
 }

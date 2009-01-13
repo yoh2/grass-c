@@ -126,4 +126,8 @@ grass_apply(struct grass_machine *machine,
             char **error_message);
 
 
+/*! \brief 値のリスト(環境 or Dump)を出力する。 */
+void
+grass_dump_value_list(const struct grass_value_node *value_list);
+
 #endif /* grass_value_H_ */

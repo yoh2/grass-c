@@ -8,6 +8,7 @@
  * $LastChangedDate$
  */
 #include "grass_instruction.h"
+#include <stdio.h>
 #include <gc.h>
 #include <assert.h>
 
@@ -83,5 +84,38 @@ grass_append_instruction_list(struct grass_instruction_node *list1, struct grass
 		list1_tail->next = list2;
 		return list1;
 	}
+}
+
+
+static void
+grass_dump_instruction(const struct grass_instruction *inst)
+{
+	switch(inst->type)
+	{
+	case GRASS_IT_APPLICATION:
+		printf("App(%zu, %zu)",
+		        inst->content.app.func_index,
+			inst->content.app.arg_index);
+		break;
+
+	case GRASS_IT_ABSTRACTION:
+		printf("Abs(%zu, ", inst->content.abs.num_args);
+		grass_dump_instruction_list(inst->content.abs.code);
+		printf(")");
+	}
+}
+
+
+void
+grass_dump_instruction_list(const struct grass_instruction_node *inst_list)
+{
+	printf("(");
+	while(inst_list != NULL)
+	{
+		grass_dump_instruction(&inst_list->inst);
+		printf(" :: ");
+		inst_list = inst_list->next;
+	}
+	printf("ε)");
 }
 
