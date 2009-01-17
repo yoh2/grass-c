@@ -20,15 +20,19 @@
 #include <locale.h>
 #include <assert.h>
 
+
+/*! プログラムのオプション */
 struct prog_options
 {
-	int dump;
-	int trace;
-	int step;
-	int no_exec;
+	int dump;    /*!< dumpオプションに対応。 */
+	int trace;   /*!< traceオプションに対応。 */
+	int step;    /*!< stopオプションに対応。 */
+	int no_exec; /*!< noexecオプションに対応。 */
 
-	int help;
-	int help_to_stderr;
+	const char *infile; /*!< 入力(ソース)ファイル。無指定ならNULL。 */
+
+	int help;    /*!< helpオプションが指定されるか、不正オプションがあった場合に1。 */
+	int help_to_stderr; /*!< ヘルプを stderr に出力するか。0の場合は stdout になる。 */
 };
 
 /*
@@ -42,7 +46,7 @@ struct prog_options
  *	--help,   -h 使い方を出力して終了する。
  */
 static void
-get_options(int argc, char *argv[], struct prog_options *opts)
+get_options(int argc, char *argv[], struct prog_options *options)
 {
 	struct option longopts[] = {
 		{ "dump",   no_argument, NULL, 'd' },
@@ -56,35 +60,36 @@ get_options(int argc, char *argv[], struct prog_options *opts)
 	int done = 0;
 
 	/* 初期値 */
-	opts->dump = 0;
-	opts->trace = 0;
-	opts->step = 0;
-	opts->no_exec = 0;
-	opts->help = 0;
-	opts->help_to_stderr = 0;
+	options->dump = 0;
+	options->trace = 0;
+	options->step = 0;
+	options->no_exec = 0;
+	options->infile = NULL;
+	options->help = 0;
+	options->help_to_stderr = 0;
 
 	do
 	{
 		switch(getopt_long(argc, argv, "dtsnh", longopts, NULL))
 		{
 		case 'd': /* dump */
-			opts->dump = 1;
+			options->dump = 1;
 			break;
 
 		case 't': /* trace */
-			opts->trace = 1;
+			options->trace = 1;
 			break;
 
 		case 's': /* step */
-			opts->step = 1;
+			options->step = 1;
 			break;
 
 		case 'n': /* noexec */
-			opts->no_exec = 1;
+			options->no_exec = 1;
 			break;
 
 		case 'h': /* help */
-			opts->help = 1;
+			options->help = 1;
 			break;
 
 		case -1:
@@ -92,8 +97,9 @@ get_options(int argc, char *argv[], struct prog_options *opts)
 			break;
 
 		case '?':
-			opts->help = 1;
-			opts->help_to_stderr = 1;
+			options->help = 1;
+			options->help_to_stderr = 1;
+
 			done = 1;
 			break;
 
@@ -102,30 +108,58 @@ get_options(int argc, char *argv[], struct prog_options *opts)
 			break;
 		}
 	}while(!done);
+
+	if(optind < argc - 1)
+	{
+		/* ファイル指定が複数あるのはNG。 */
+		options->help = 1;
+		options->help_to_stderr = 1;
+	}
+	else if(optind < argc)
+	{
+		options->infile = argv[optind];
+	}
 }
 
 
-/*
- * \retval 0 正常終了
+/*!
+ * 使い方を表示する。
+ *
+ * \param out   使い方表示先。
+ * \param prog  プログラム名。
  */
-int main(int argc, char *argv[])
+static void
+print_usage(FILE *out, const char *prog)
+{
+	/* 頭回らん。gdgdな文かも。 */
+	fprintf(out,
+		"usage: %s [options..] [infile]\n"
+		"\n"
+		"  -d, --dump    dump parsed result.\n"
+		"  -t, --trace   run with Grass machine's state output step-by-step.\n"
+		"                (note: lots of texts will be output.)\n"
+		"  -s, --step    run in stepping mode.\n"
+		"  -n, --noexec  parse only. odn't run the program.\n"
+		"  -h, --help    display this help and exit.\n"
+		,
+		prog
+	);
+}
+
+
+/*!
+ * \param options  実行オプション。
+ * \param in       ソース読み込み元。
+ *
+ * \return そのまま main() の戻り値になる。
+ */
+static int
+run(const struct prog_options *options, FILE *in)
 {
 	struct grass_instruction_node *code;
 	char *error_messsage;
-	struct prog_options options;
 
-	setlocale(LC_ALL, "");
-
-	get_options(argc, argv, &options);
-
-	if(options.help)
-	{
-		/* TODO: ヘルプ表示 */
-		return (options.help_to_stderr? 1: 0);
-	}
-
-
-	code = grass_parse_source(stdin, &error_messsage);
+	code = grass_parse_source(in, &error_messsage);
 	if(code == NULL)
 	{
 		if(error_messsage == NULL)
@@ -140,13 +174,13 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if(options.dump)
+	if(options->dump)
 	{
 		grass_dump_instruction_list(code);
 		puts("");
 	}
 
-	if(!options.no_exec)
+	if(!options->no_exec)
 	{
 		struct grass_machine *machine;
 		char *msg;
@@ -155,11 +189,11 @@ int main(int argc, char *argv[])
 
 		while(!grass_machine_done(machine))
 		{
-			if(options.trace)
+			if(options->trace)
 			{
 				grass_dump_machine(machine);
 			}
-			if(options.step)
+			if(options->step)
 			{
 				printf("hit enter key.");
 				fflush(stdout);
@@ -172,5 +206,43 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+
 	return 0;
+}
+
+
+/*!
+ * \retval 0 正常終了
+ * \retval 1 何らかのエラー発生
+ */
+int main(int argc, char *argv[])
+{
+	struct prog_options options;
+	FILE *in;
+
+	setlocale(LC_ALL, "");
+
+	get_options(argc, argv, &options);
+
+	if(options.help)
+	{
+		print_usage(options.help_to_stderr? stderr: stdout, argv[0]);
+		return (options.help_to_stderr? 1: 0);
+	}
+
+	if(options.infile == NULL)
+	{
+		in = stdin;
+	}
+	else
+	{
+		in = fopen(options.infile, "r");
+		if(in == NULL)
+		{
+			perror(options.infile);
+			return 1;
+		}
+	}
+
+	return run(&options, in);
 }
