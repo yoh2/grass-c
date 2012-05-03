@@ -11,3 +11,15 @@ Makefile.in
 /depcomp
 /install-sh
 /missing
+
+# misc.
+
+*~
+.*.sw[op]
+Makefile
+config.log
+config.status
+.deps
+*.o
+
+/src/grass
